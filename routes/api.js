@@ -3,56 +3,44 @@ const { User, TarotCard, UserTarotResult } = require('../models');
 
 const router = express.Router();
 
-// Get all users
-router.get('/users', async (req, res) => {
+// 検索エンドポイント
+router.get('/user-tarot-results', async (req, res) => {
+  const { userId } = req.query; // クエリパラメータで userId を取得
   try {
-    const users = await User.findAll();
-    res.json(users);
+    const where = userId ? { userId } : {};
+    const results = await UserTarotResult.findAll({
+      where,
+      include: [
+        { model: User, attributes: ['name'] },
+        { model: TarotCard, attributes: ['name', 'description'] },
+      ],
+    });
+
+    const formattedResults = results.map((result) => ({
+      id: result.id,
+      userId: result.userId,
+      tarotCardId: result.tarotCardId,
+      userName: result.User.name,
+      tarotCardName: result.TarotCard.name,
+      description: result.TarotCard.description,
+      createdAt: result.createdAt,
+    }));
+
+    res.json(formattedResults);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch users' });
+    res.status(500).json({ error: 'Failed to fetch user tarot results' });
   }
 });
 
-// Get all tarot cards
-router.get('/tarot-cards', async (req, res) => {
-  try {
-    const cards = await TarotCard.findAll();
-    res.json(cards);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch tarot cards' });
-  }
-});
-
-// Add a new user
-router.post('/users', async (req, res) => {
-  try {
-    const { name, email } = req.body;
-    const user = await User.create({ name, email });
-    res.status(201).json(user);
-  } catch (error) {
-    res.status(400).json({ error: 'Failed to create user' });
-  }
-});
-
-// Add a new tarot card
-router.post('/tarot-cards', async (req, res) => {
-  try {
-    const { name, description } = req.body;
-    const card = await TarotCard.create({ name, description });
-    res.status(201).json(card);
-  } catch (error) {
-    res.status(400).json({ error: 'Failed to create tarot card' });
-  }
-});
-
-// Add a user-tarot result
+// データ作成エンドポイント
 router.post('/user-tarot-results', async (req, res) => {
+  const { userId, tarotCardId } = req.body;
   try {
-    const { userId, tarotCardId } = req.body;
-    const result = await UserTarotResult.create({ userId, tarotCardId });
-    res.status(201).json(result);
+    const newResult = await UserTarotResult.create({ userId, tarotCardId });
+    res.status(201).json(newResult);
   } catch (error) {
-    res.status(400).json({ error: 'Failed to create user-tarot result' });
+    console.error('Error creating user tarot result:', error); // ログ出力
+    res.status(400).json({ error: 'Failed to create user tarot result' });
   }
 });
 
